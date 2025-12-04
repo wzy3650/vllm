@@ -444,7 +444,7 @@ class KimiAudioProcessor(ProcessorMixin):
         self.audio_tokenizer = audio_tokenizer
         if text_tokenizer is None:
             from transformers import AutoTokenizer
-            text_tokenizer = AutoTokenizer.from_pretrained("agora_sos_models/finetuned_hf_for_inference_8_1000", trust_remote_code=True)
+            text_tokenizer = AutoTokenizer.from_pretrained("agora_sos_models/finetuned_hf_for_inference_13_2750", trust_remote_code=True)
         self.text_tokenizer = text_tokenizer
         self.chat_template = chat_template
         self.extra_tokens = instantiate_extra_tokens(self.text_tokenizer)
