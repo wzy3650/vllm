@@ -17,6 +17,8 @@ from enum import Enum
 
 random.seed(42)
 
+mute = False
+
 class SOS_TOKEN(Enum):
     YES = "是"
     NO = "否"
@@ -59,6 +61,11 @@ prompts = {
     "binary": "请识别电话沟通场景中如下声音片段的话轮转换意图，判断该片段是否包含明确的开始说话信号。请区分以下两种情况：若检测到清晰语音起始或强烈发言意愿（如语句开头、语气转折），应回复<是>；若仅含附和词（如\"嗯\"、\"yeah\"）、非语言声音（如喷嚏、咳嗽、笑声）、噪声或近似静默等非打断性信号，应回复<否>",
     "multi": "请识别电话沟通场景中如下声音片段的类别。若检测到清晰语音起始或强烈发言意愿（如语句开头、语气转折），应回复<3>；否则若含附和词（如\"嗯\"、\"yeah\"），应回复<2>；除1、2外的所有其他情况如非语言声音（如喷嚏、咳嗽、笑声）、噪声或近似静默等非打断性信号，应回复<1>",
 }
+
+def dprint(content):
+    if mute:
+        return
+    print(content)
 
 async def kick_model(model_path, input_audios, concurrence):
     PAYLOAD["model"] = model_path
@@ -106,30 +113,30 @@ def print_results(results, concurrence, start_time, end_time):
     total_duration = end_time - start_time
     requests_per_second = num_requests / total_duration
 
-    print("\n" + "=" * 60)
-    print("📊 基准测试结果")
-    print("=" * 60)
-    print(f"并发数:             {concurrence}")
-    print(f"总请求数:           {num_requests}")
-    print(f"测试总时长:         {total_duration:.2f}s")
-    print(f"请求速率:           {requests_per_second:.2f} req/s")
+    dprint("\n" + "=" * 60)
+    dprint("📊 基准测试结果")
+    dprint("=" * 60)
+    dprint(f"并发数:             {concurrence}")
+    dprint(f"总请求数:           {num_requests}")
+    dprint(f"测试总时长:         {total_duration:.2f}s")
+    dprint(f"请求速率:           {requests_per_second:.2f} req/s")
 
     if latencies:
-        print(f"\n⏱️  延迟统计:")
-        print(f"平均延迟:           {mean(latencies)*1000:.2f}ms")
-        print(f"中位延迟:           {median(latencies)*1000:.2f}ms")
-        print(f"最小延迟:           {min(latencies)*1000:.2f}ms")
-        print(f"最大延迟:           {max(latencies)*1000:.2f}ms")
+        dprint(f"\n⏱️  延迟统计:")
+        dprint(f"平均延迟:           {mean(latencies)*1000:.2f}ms")
+        dprint(f"中位延迟:           {median(latencies)*1000:.2f}ms")
+        dprint(f"最小延迟:           {min(latencies)*1000:.2f}ms")
+        dprint(f"最大延迟:           {max(latencies)*1000:.2f}ms")
 
         sorted_latencies = sorted(latencies)
         p95_idx = int(len(sorted_latencies) * 0.95)
         p99_idx = int(len(sorted_latencies) * 0.99)
         if p95_idx < len(sorted_latencies):
-            print(f"95%延迟:            {sorted_latencies[p95_idx]*1000:.2f}ms")
+            dprint(f"95%延迟:            {sorted_latencies[p95_idx]*1000:.2f}ms")
         if p99_idx < len(sorted_latencies):
-            print(f"99%延迟:            {sorted_latencies[p99_idx]*1000:.2f}ms")
+            dprint(f"99%延迟:            {sorted_latencies[p99_idx]*1000:.2f}ms")
 
-    print("=" * 60)
+    dprint("=" * 60)
 
 
 @dataclass
@@ -169,10 +176,10 @@ class SOSClient:
                 response_text = await response.text()
                 latency = time.perf_counter() - start_time
                 delay = (int)(latency * 1000)
-                # print(f"{audio[0]}: delay {delay}ms")
+                # dprint(f"{audio[0]}: delay {delay}ms")
                 self.latencies.append(delay)
                 if len(self.latencies) % 10 == 0:
-                    print(f"<STATISTICS> process {os.getpid()} average latency {int(np.mean(self.latencies))}ms\n")
+                    dprint(f"<STATISTICS> process {os.getpid()} average latency {int(np.mean(self.latencies))}ms\n")
 
                 if response.status == 200:
                     return RequestResult(
@@ -184,7 +191,7 @@ class SOSClient:
                         latency=latency,
                     )
                 else:
-                    print(f"HTTP error {response.status}")
+                    dprint(f"HTTP error {response.status}")
                     assert False
                     return RequestResult(
                         identity=audio[0],
@@ -195,7 +202,7 @@ class SOSClient:
                     )
 
         except Exception as e:
-            print(f"exception {str(e)}")
+            dprint(f"exception {str(e)}")
             assert False
             latency = time.perf_counter() - start_time
             return RequestResult(
@@ -244,13 +251,13 @@ class SOSClient:
                     self.worker(session, input_audios[worker_id])
                 )
                 tasks.append(task)
-            print("⏳ 执行测试中...")
+            dprint("⏳ 执行测试中...")
             worker_results = await asyncio.gather(*tasks, return_exceptions=True)
         end_time = time.perf_counter()
 
         for worker_result in worker_results:
             if isinstance(worker_result, Exception):
-                print(f"exception in results")
+                dprint(f"exception in results")
                 assert False
                 continue
             results.extend(worker_result)
